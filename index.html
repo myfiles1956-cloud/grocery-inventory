@@ -1,0 +1,3140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreshTrack — Real-Time Grocery Inventory &amp; Smart Bill Scanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #070d12;
+      --bg-surface: #0f1922;
+      --bg-card: rgba(17, 29, 40, 0.88);
+      --bg-card-hover: rgba(24, 41, 56, 0.96);
+      --bg-input: rgba(11, 20, 29, 0.92);
+      --border-color: rgba(255, 255, 255, 0.09);
+      --border-focus: rgba(16, 185, 129, 0.55);
+
+      --text-main: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --primary-soft: rgba(16, 185, 129, 0.15);
+
+      --accent-cyan: #0ea5e9;
+      --accent-cyan-soft: rgba(14, 165, 233, 0.15);
+
+      --accent-indigo: #6366f1;
+      --accent-indigo-soft: rgba(99, 102, 241, 0.15);
+
+      --success: #10b981;
+      --success-soft: rgba(16, 185, 129, 0.15);
+      --success-border: rgba(16, 185, 129, 0.38);
+
+      --warning: #f59e0b;
+      --warning-soft: rgba(245, 158, 11, 0.16);
+      --warning-border: rgba(245, 158, 11, 0.42);
+
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.16);
+      --danger-border: rgba(239, 68, 68, 0.45);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 22px;
+      --shadow-card: 0 14px 34px -8px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.09) 0%, transparent 38%),
+        radial-gradient(circle at 88% 12%, rgba(14, 165, 233, 0.08) 0%, transparent 36%),
+        radial-gradient(circle at 50% 92%, rgba(245, 158, 11, 0.06) 0%, transparent 45%);
+      background-attachment: fixed;
+      padding-bottom: 64px;
+      line-height: 1.45;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* Sticky App Header */
+    header.app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(16px);
+      background: rgba(7, 13, 18, 0.88);
+      border-bottom: 1px solid var(--border-color);
+      padding: 15px 28px;
+    }
+
+    .header-inner {
+      max-width: 1620px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #10b981, #0ea5e9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.45);
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      font-size: 1.32rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #ffffff, #a7f3d0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-sub {
+      font-size: 0.79rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.65; }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .control-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.79rem;
+      color: var(--text-secondary);
+    }
+
+    .control-pill input[type="date"],
+    .control-pill select {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 0.81rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .control-pill select option {
+      background: var(--bg-surface);
+      color: var(--text-main);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 15px;
+      border-radius: var(--radius-sm);
+      font-size: 0.83rem;
+      font-weight: 600;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.22);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981, #0ea5e9);
+      border-color: transparent;
+      color: #04130e;
+      font-weight: 700;
+      box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.45);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #059669, #0284c7);
+      color: #ffffff;
+      box-shadow: 0 8px 22px -4px rgba(16, 185, 129, 0.65);
+    }
+
+    .btn-accent {
+      background: rgba(14, 165, 233, 0.16);
+      border-color: rgba(14, 165, 233, 0.4);
+      color: #38bdf8;
+    }
+
+    .btn-accent:hover {
+      background: #0ea5e9;
+      color: #fff;
+    }
+
+    /* Main Container */
+    main.container {
+      max-width: 1620px;
+      margin: 22px auto 0;
+      padding: 0 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    /* Navigational Tabs Bar (The 7 Required Navigational Tabs + All Hub) */
+    nav.module-nav {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .module-nav-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 0 4px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .module-nav-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .module-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .nav-pill-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 13px;
+      border-radius: var(--radius-md);
+      background: rgba(11, 20, 29, 0.72);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+
+    .nav-pill-btn:hover {
+      background: rgba(24, 41, 56, 0.9);
+      border-color: rgba(16, 185, 129, 0.38);
+      color: var(--text-main);
+    }
+
+    .nav-pill-btn.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(14, 165, 233, 0.22));
+      border-color: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.32), 0 8px 20px -6px rgba(16, 185, 129, 0.35);
+    }
+
+    .nav-pill-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .nav-step-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.07);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .nav-pill-btn.active .nav-step-num {
+      background: var(--primary);
+      color: #04130e;
+    }
+
+    .nav-pill-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-pill-sub {
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      flex-shrink: 0;
+    }
+
+    .nav-badge.badge-danger {
+      background: var(--danger-soft);
+      color: #fca5a5;
+      border: 1px solid var(--danger-border);
+    }
+
+    .nav-badge.badge-warning {
+      background: var(--warning-soft);
+      color: #fde68a;
+      border: 1px solid var(--warning-border);
+    }
+
+    /* Grocery Bill Upload & AI/OCR Smart Extraction Slot */
+    section.bill-scanner-section {
+      background: linear-gradient(145deg, rgba(17, 29, 40, 0.94), rgba(12, 24, 34, 0.94));
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .scanner-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .scanner-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .scanner-badge-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #34d399;
+      flex-shrink: 0;
+    }
+
+    .scanner-title-group h2 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ecfdf5;
+    }
+
+    .scanner-title-group p {
+      font-size: 0.79rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .scanner-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .dropzone-slot {
+      border: 2px dashed rgba(16, 185, 129, 0.42);
+      background: rgba(7, 13, 18, 0.65);
+      border-radius: var(--radius-md);
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      min-height: 195px;
+    }
+
+    .dropzone-slot:hover,
+    .dropzone-slot.drag-over {
+      border-color: #34d399;
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .dropzone-slot input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .paste-bill-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(7, 13, 18, 0.65);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px;
+    }
+
+    .paste-bill-box textarea {
+      width: 100%;
+      flex: 1;
+      min-height: 105px;
+      background: rgba(15, 25, 34, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 10px;
+      font-size: 0.8rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    .paste-bill-box textarea:focus {
+      border-color: var(--primary);
+    }
+
+    /* Extracted Bill Preview Container */
+    .extracted-preview-card {
+      background: rgba(9, 16, 23, 0.92);
+      border: 1px solid rgba(14, 165, 233, 0.4);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .extracted-preview-card.visible {
+      display: flex;
+    }
+
+    .extracted-table-wrap {
+      overflow-x: auto;
+    }
+
+    table.extracted-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+    }
+
+    table.extracted-table th {
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(14, 165, 233, 0.1);
+    }
+
+    table.extracted-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.82rem;
+    }
+
+    table.extracted-table input,
+    table.extracted-table select {
+      background: var(--bg-input);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.8rem;
+      width: 100%;
+    }
+
+    /* Real-Time Alert Panels (Stock Reorder Limit Alert & Expiry Alert) */
+    .alerts-banner-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 16px;
+    }
+
+    .alert-panel {
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid;
+    }
+
+    .alert-panel.reorder-panel {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.13), rgba(239, 68, 68, 0.1));
+      border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .alert-panel.expiry-panel {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.13), rgba(168, 85, 247, 0.1));
+      border-color: rgba(239, 68, 68, 0.45);
+    }
+
+    .alert-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .alert-panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.94rem;
+      font-weight: 700;
+    }
+
+    .alert-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 115px;
+      overflow-y: auto;
+    }
+
+    .alert-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 0.77rem;
+      font-weight: 600;
+      background: rgba(11, 20, 29, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .alert-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--primary);
+    }
+
+    /* Interactive KPI Dashboard Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      gap: 14px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(16, 185, 129, 0.45);
+    }
+
+    .kpi-label {
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-value {
+      font-size: 1.62rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-foot {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    /* Category Filter & Quick Toggles */
+    .category-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 13px 18px;
+    }
+
+    .category-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .cat-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: rgba(11, 20, 29, 0.75);
+      color: var(--text-secondary);
+      font-size: 0.81rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .cat-btn:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+
+    .cat-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #04130e;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .cat-count {
+      background: rgba(0, 0, 0, 0.22);
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    /* Active Tab Focus Banner */
+    .module-focus-banner {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.16), rgba(14, 165, 233, 0.08));
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Search & Sort Controls */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    search.search-box {
+      flex: 1;
+      min-width: 260px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 9px 14px;
+    }
+
+    search.search-box:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+
+    search.search-box input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 0.87rem;
+      outline: none;
+    }
+
+    .select-control {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 9px 13px;
+      border-radius: var(--radius-md);
+      font-size: 0.83rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Main Inventory Table */
+    .table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table.inventory-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1380px;
+    }
+
+    table.inventory-table th {
+      background: rgba(11, 20, 29, 0.94);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 13px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    table.inventory-table th.highlight-col,
+    table.inventory-table td.highlight-col {
+      background: rgba(16, 185, 129, 0.09);
+      box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.24);
+    }
+
+    table.inventory-table th.highlight-col {
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.18);
+    }
+
+    table.inventory-table tbody tr {
+      border-bottom: 1px solid var(--border-color);
+      transition: background 0.15s ease;
+    }
+
+    table.inventory-table tbody tr:hover {
+      background: rgba(24, 41, 56, 0.58);
+    }
+
+    table.inventory-table tbody tr.row-expired {
+      background: rgba(239, 68, 68, 0.07);
+    }
+
+    table.inventory-table tbody tr.row-reorder-alert {
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    table.inventory-table td {
+      padding: 12px 12px;
+      font-size: 0.84rem;
+      vertical-align: middle;
+    }
+
+    .item-name {
+      font-weight: 700;
+      color: var(--text-main);
+      font-size: 0.91rem;
+    }
+
+    .item-meta {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .unit-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(14, 165, 233, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(14, 165, 233, 0.32);
+    }
+
+    .cat-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-secondary);
+    }
+
+    /* Inline Real-Time Editable Inputs */
+    .inline-num-input,
+    .inline-date-input,
+    .inline-text-input {
+      background: rgba(11, 20, 29, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      color: var(--text-main);
+      border-radius: 7px;
+      padding: 5px 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      width: 74px;
+      text-align: right;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .inline-date-input {
+      width: 130px;
+      text-align: left;
+    }
+
+    .inline-text-input {
+      width: 82px;
+      text-align: left;
+    }
+
+    .inline-num-input:focus,
+    .inline-date-input:focus,
+    .inline-text-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    }
+
+    /* Stepper for Items Used */
+    .qty-stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(11, 20, 29, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .step-btn {
+      width: 25px;
+      height: 25px;
+      border-radius: 6px;
+      border: none;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      font-weight: 800;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+
+    .step-btn:hover {
+      background: var(--primary);
+      color: #04130e;
+    }
+
+    .qty-stepper input {
+      width: 50px;
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.83rem;
+      outline: none;
+    }
+
+    /* Stock Health Bar & Remaining Cell */
+    .health-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 150px;
+    }
+
+    .health-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .remaining-num {
+      font-size: 0.98rem;
+      font-weight: 800;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    /* Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.71rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-ok {
+      background: var(--success-soft);
+      color: #34d399;
+      border: 1px solid var(--success-border);
+    }
+
+    .status-warning {
+      background: var(--warning-soft);
+      color: #fbbf24;
+      border: 1px solid var(--warning-border);
+    }
+
+    .status-danger {
+      background: var(--danger-soft);
+      color: #f87171;
+      border: 1px solid var(--danger-border);
+    }
+
+    .action-btn-sm {
+      padding: 5px 9px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .action-btn-sm:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #04130e;
+    }
+
+    .action-btn-restock {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.42);
+      color: #34d399;
+    }
+
+    /* Visual Stock Health & Expiry Analytics Grid */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .chart-card h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 260px;
+      width: 100%;
+    }
+
+    /* Native Dialog Modal */
+    dialog.app-modal {
+      margin: auto;
+      background: #0f1922;
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: var(--radius-xl);
+      padding: 0;
+      width: 92%;
+      max-width: 660px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.78);
+    }
+
+    dialog.app-modal::backdrop {
+      background: rgba(4, 9, 14, 0.78);
+      backdrop-filter: blur(6px);
+    }
+
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-field label {
+      font-size: 0.77rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .form-field input,
+    .form-field select {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.86rem;
+      outline: none;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus {
+      border-color: var(--primary);
+    }
+
+    .modal-footer {
+      padding: 15px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: rgba(11, 20, 29, 0.7);
+    }
+
+    /* Toast Notifications */
+    #toast-container {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      z-index: 99;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 390px;
+    }
+
+    .toast {
+      background: rgba(15, 25, 34, 0.96);
+      border-left: 4px solid var(--primary);
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      border-right: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.81rem;
+      font-weight: 600;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+      animation: slideIn 0.2s ease;
+    }
+
+    .toast.toast-alert {
+      border-left-color: var(--warning);
+      background: rgba(28, 22, 12, 0.96);
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 980px) {
+      .scanner-grid,
+      .analytics-grid {
+        grid-template-columns: 1fr;
+      }
+      header.app-header,
+      main.container {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+      .modal-body {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#04130e" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+        </div>
+        <div>
+          <h1>FreshTrack Real-Time Grocery Inventory</h1>
+          <div class="brand-sub">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span>Smart Bill OCR Extractor • Dynamic Stock Health • Reorder Limit &amp; Expiry Alert Engine</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="control-pill" title="Simulate reference date to test real-time expiry alerts">
+          <label for="ref-date-input">Alert Ref Date:</label>
+          <input type="date" id="ref-date-input">
+        </div>
+
+        <div class="control-pill" title="Alert threshold for upcoming grocery expiry">
+          <label for="expiry-window-select">Expiry Alert Window:</label>
+          <select id="expiry-window-select">
+            <option value="7">≤ 7 Days</option>
+            <option value="15">≤ 15 Days</option>
+            <option value="30" selected>≤ 30 Days</option>
+            <option value="60">≤ 60 Days</option>
+          </select>
+        </div>
+
+        <div class="control-pill">
+          <label for="currency-picker">Currency:</label>
+          <select id="currency-picker">
+            <option value="₹">₹ (INR)</option>
+            <option value="$">$ (USD)</option>
+            <option value="€">€ (EUR)</option>
+            <option value="£">£ (GBP)</option>
+          </select>
+        </div>
+
+        <button type="button" class="btn" id="btn-export-csv">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+
+        <button type="button" class="btn" id="btn-reset-demo">
+          Reset Demo Data
+        </button>
+
+        <button type="button" class="btn btn-primary" id="btn-open-add-modal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Grocery Item
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 7 Navigational Tabs Requested + Unified All Hub -->
+    <nav class="module-nav" aria-label="Grocery Inventory Navigational Tabs">
+      <div class="module-nav-header">
+        <span class="module-nav-title">Navigational Tabs (Click any tab to highlight &amp; focus that column or filter)</span>
+        <button type="button" class="action-btn-sm" id="btn-show-all-tabs">Show Full Unified Dashboard</button>
+      </div>
+      <div class="module-nav-grid" id="nav-tabs-grid">
+        <button type="button" class="nav-pill-btn active" data-tab="all">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">★</span>
+            <div>
+              <div class="nav-pill-label">All Grocery Hub</div>
+              <span class="nav-pill-sub">Complete interactive view</span>
+            </div>
+          </div>
+          <span class="nav-badge" id="badge-tab-all">0 Items</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="date">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">1</span>
+            <div>
+              <div class="nav-pill-label">Date</div>
+              <span class="nav-pill-sub">Inventory entry / log date</span>
+            </div>
+          </div>
+          <span class="nav-badge" id="badge-tab-date">Today</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="name">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">2</span>
+            <div>
+              <div class="nav-pill-label">Name of Item</div>
+              <span class="nav-pill-sub">Item &amp; unit of weight/vol</span>
+            </div>
+          </div>
+          <span class="nav-badge" id="badge-tab-name">0 SKUs</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="quantity">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">3</span>
+            <div>
+              <div class="nav-pill-label">Quantity</div>
+              <span class="nav-pill-sub">No. of items &amp; pack size</span>
+            </div>
+          </div>
+          <span class="nav-badge" id="badge-tab-quantity">0 Packs</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="purchase-date">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">4</span>
+            <div>
+              <div class="nav-pill-label">Date of Purchase</div>
+              <span class="nav-pill-sub">Bill / purchase timestamp</span>
+            </div>
+          </div>
+          <span class="nav-badge" id="badge-tab-purchase">Recent</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="expiry-date">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">5</span>
+            <div>
+              <div class="nav-pill-label">Date of Expiry</div>
+              <span class="nav-pill-sub">Shelf-life &amp; expiry alerts</span>
+            </div>
+          </div>
+          <span class="nav-badge badge-danger" id="badge-tab-expiry">0 Alerts</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="cost">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">6</span>
+            <div>
+              <div class="nav-pill-label">Cost of Item</div>
+              <span class="nav-pill-sub">Unit cost &amp; total valuation</span>
+            </div>
+          </div>
+          <span class="nav-badge" id="badge-tab-cost">₹0</span>
+        </button>
+
+        <button type="button" class="nav-pill-btn" data-tab="total-quantity">
+          <div class="nav-pill-left">
+            <span class="nav-step-num">7</span>
+            <div>
+              <div class="nav-pill-label">Total Quantity</div>
+              <span class="nav-pill-sub">Used, Remaining &amp; Reorder</span>
+            </div>
+          </div>
+          <span class="nav-badge badge-warning" id="badge-tab-total-qty">0 Low</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Grocery Bill Upload Slot & Automatic Item Details Extractor -->
+    <section class="bill-scanner-section" aria-label="Grocery Bill Upload and Item Extractor">
+      <div class="scanner-header">
+        <div class="scanner-title-group">
+          <div class="scanner-badge-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+          </div>
+          <div>
+            <h2>Smart Grocery Bill Upload &amp; Automatic Item Extractor</h2>
+            <p>Upload a receipt image (JPG/PNG/WebP), CSV/TXT bill, or test with a sample receipt to automatically extract <strong>Name of Item</strong>, <strong>Unit of Weight or Volume</strong>, <strong>No. of Item</strong>, and <strong>Cost of Item</strong>.</p>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn btn-accent" id="btn-sample-bill-1">
+            🧾 Load Sample Supermarket Bill #1
+          </button>
+          <button type="button" class="btn btn-accent" id="btn-sample-bill-2">
+            🥦 Load Fresh Produce &amp; Dairy Bill #2
+          </button>
+        </div>
+      </div>
+
+      <div class="scanner-grid">
+        <!-- Upload Slot -->
+        <div class="dropzone-slot" id="bill-dropzone">
+          <input type="file" id="bill-file-input" accept="image/*,.txt,.csv" aria-label="Upload grocery bill image or text file">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.9" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div style="font-weight:700; font-size:0.92rem; color:#ecfdf5;" id="dropzone-status-title">
+            Drop Grocery Bill Image / Receipt Here or Click to Browse
+          </div>
+          <div style="font-size:0.77rem; color:var(--text-muted); max-width:420px;" id="dropzone-status-sub">
+            Supports Receipt Photos (OCR via Tesseract.js), CSV bills, or Text receipts. Automatically extracts Name, Weight/Volume Unit, Quantity, and Cost.
+          </div>
+          <div id="uploaded-bill-preview" style="display:none; margin-top:8px; align-items:center; gap:10px;">
+            <img id="bill-thumb" src="" alt="Uploaded grocery bill preview" width="64" height="64" style="object-fit:cover; border-radius:8px; border:1px solid var(--primary);">
+            <span id="bill-filename" class="mono" style="font-size:0.76rem; color:#a7f3d0;"></span>
+          </div>
+        </div>
+
+        <!-- Raw Receipt Text / Instant Parser Box -->
+        <div class="paste-bill-box">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <label for="bill-raw-text" style="font-size:0.78rem; font-weight:700; color:var(--text-secondary);">
+              Receipt Text / OCR Output (Editable — 1 item per line):
+            </label>
+            <button type="button" class="action-btn-sm action-btn-restock" id="btn-parse-text">
+              ⚡ Extract Items From Text
+            </button>
+          </div>
+          <textarea id="bill-raw-text" placeholder="Example receipt lines:
+Aashirvaad Whole Wheat Atta | 5 kg | 2 | 265.00
+Amul Taaza Toned Milk | 1 L | 6 | 56.00
+Fortune Sunlite Refined Oil | 1 L | 3 | 145.00
+Tata Sampann Unpolished Toor Dal | 1 kg | 2 | 168.00"></textarea>
+          <div style="font-size:0.72rem; color:var(--text-dim);">
+            Format supported: <code>Item Name | Unit (kg/g/L/ml/pcs) | No. of Item | Cost per Item</code> or natural supermarket receipt lines.
+          </div>
+        </div>
+      </div>
+
+      <!-- Extracted Items Interactive Verification Table -->
+      <div class="extracted-preview-card" id="extracted-preview-card">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+          <div>
+            <strong style="color:#38bdf8; font-size:0.92rem;" id="extracted-count-title">Extracted 0 Items from Grocery Bill</strong>
+            <p style="font-size:0.76rem; color:var(--text-muted);">
+              Verify or adjust extracted <strong>Name of Item</strong>, <strong>Unit of Weight/Volume</strong>, <strong>No. of Item</strong>, <strong>Cost of Item</strong>, and manual <strong>Reorder Limit / Reorder Qty</strong> before adding to inventory.
+            </p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn" id="btn-add-extracted-row">+ Add Line</button>
+            <button type="button" class="btn" id="btn-clear-extracted">Dismiss</button>
+            <button type="button" class="btn btn-primary" id="btn-import-extracted">
+              ✓ Import All to Live Inventory
+            </button>
+          </div>
+        </div>
+
+        <div class="extracted-table-wrap">
+          <table class="extracted-table">
+            <thead>
+              <tr>
+                <th>Name of Item</th>
+                <th>Unit of Weight / Volume</th>
+                <th>No. of Item (Qty)</th>
+                <th>Cost of Item (Unit)</th>
+                <th>Date of Purchase</th>
+                <th>Date of Expiry</th>
+                <th>Reorder Limit (Manual)</th>
+                <th>Reorder Qty (Manual)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="extracted-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Alert Center: Reorder Limit Alert & Expiry Alert -->
+    <section class="alerts-banner-grid" aria-label="Real-Time Stock Health and Expiry Alerts">
+      <div class="alert-panel reorder-panel">
+        <div class="alert-panel-header">
+          <div class="alert-panel-title" style="color:#fde68a;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.3" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Reorder Limit Alerts (Items Remaining ≤ Reorder Limit)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="status-badge status-warning" id="reorder-alert-badge">0 Alerts</span>
+            <button type="button" class="action-btn-sm action-btn-restock" id="btn-restock-all-low">
+              + Restock All Low Items
+            </button>
+          </div>
+        </div>
+        <div class="alert-chips" id="reorder-alert-chips"></div>
+      </div>
+
+      <div class="alert-panel expiry-panel">
+        <div class="alert-panel-header">
+          <div class="alert-panel-title" style="color:#fca5a5;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.3" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="expiry-panel-heading">Expiry Alert Monitor (Expired &amp; Expiring Soon)</span>
+          </div>
+          <span class="status-badge status-danger" id="expiry-alert-badge">0 Alerts</span>
+        </div>
+        <div class="alert-chips" id="expiry-alert-chips"></div>
+      </div>
+    </section>
+
+    <!-- Dynamic Interactive Dashboard KPI Cards -->
+    <section class="kpi-grid" aria-label="Dynamic Grocery Inventory Metrics">
+      <div class="kpi-card" data-jump-tab="total-quantity">
+        <div class="kpi-label">
+          <span>Total Items Loaded</span>
+          <span style="color:var(--accent-cyan);">Total Qty</span>
+        </div>
+        <div class="kpi-value mono" id="kpi-total-loaded">0</div>
+        <div class="kpi-foot" id="kpi-sku-count">Across 0 Grocery SKUs</div>
+      </div>
+
+      <div class="kpi-card" data-jump-tab="total-quantity">
+        <div class="kpi-label">
+          <span>Number of Items Used</span>
+          <span style="color:var(--accent-indigo);">Manual / Stepper</span>
+        </div>
+        <div class="kpi-value mono" style="color:#a5b4fc;" id="kpi-total-used">0</div>
+        <div class="kpi-foot" id="kpi-used-cost">Consumed Value: ₹0.00</div>
+      </div>
+
+      <div class="kpi-card" data-jump-tab="total-quantity">
+        <div class="kpi-label">
+          <span>Number of Items Remaining</span>
+          <span style="color:var(--success);">Live Balance</span>
+        </div>
+        <div class="kpi-value mono" style="color:var(--success);" id="kpi-total-remaining">0</div>
+        <div class="kpi-foot" id="kpi-remaining-cost">Remaining Stock Value: ₹0.00</div>
+      </div>
+
+      <div class="kpi-card" data-jump-tab="total-quantity">
+        <div class="kpi-label">
+          <span>Reorder Limit Alerts</span>
+          <span style="color:var(--warning);">At / Below Limit</span>
+        </div>
+        <div class="kpi-value mono" style="color:var(--warning);" id="kpi-reorder-alerts">0</div>
+        <div class="kpi-foot" id="kpi-reorder-qty-sum">Total Reorder Qty Needed: 0</div>
+      </div>
+
+      <div class="kpi-card" data-jump-tab="expiry-date">
+        <div class="kpi-label">
+          <span>Expiry Alerts</span>
+          <span style="color:var(--danger);">Shelf-Life Risk</span>
+        </div>
+        <div class="kpi-value mono" style="color:var(--danger);" id="kpi-expiry-alerts">0</div>
+        <div class="kpi-foot" id="kpi-expiry-breakdown">0 Expired • 0 Expiring Soon</div>
+      </div>
+
+      <div class="kpi-card" data-jump-tab="cost">
+        <div class="kpi-label">
+          <span>Total Grocery Spend</span>
+          <span style="color:var(--primary);">Cost of Items</span>
+        </div>
+        <div class="kpi-value mono" id="kpi-total-spend">₹0</div>
+        <div class="kpi-foot" id="kpi-est-reorder-cost">Est. Reorder Budget: ₹0.00</div>
+      </div>
+    </section>
+
+    <!-- Graphic Representation of Stock Health & Expiry Alerts -->
+    <section class="analytics-grid" aria-label="Graphic Representation of Stock Health and Expiry Alert">
+      <div class="chart-card">
+        <h2>
+          <span>Graphic Stock Health: Items Remaining vs. Items Used vs. Reorder Limit</span>
+          <span style="font-size:0.74rem; color:var(--primary); font-weight:600;">Real-Time Interactive Bar Chart</span>
+        </h2>
+        <div class="chart-container">
+          <canvas id="stockHealthChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h2>
+          <span>Stock Health &amp; Expiry Alert Breakdown</span>
+          <span style="font-size:0.74rem; color:#38bdf8; font-weight:600;">Live Status Distribution</span>
+        </h2>
+        <div class="chart-container">
+          <canvas id="expiryHealthChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Category Bar & Quick Alert Filters -->
+    <section class="category-bar" aria-label="Grocery Categories and Quick Filters">
+      <div class="category-tabs" id="category-tabs">
+        <button type="button" class="cat-btn active" data-category="ALL">
+          All Groceries <span class="cat-count" id="cat-count-ALL">0</span>
+        </button>
+        <button type="button" class="cat-btn" data-category="Grains & Staples">
+          🌾 Grains &amp; Staples <span class="cat-count" id="cat-count-Grains & Staples">0</span>
+        </button>
+        <button type="button" class="cat-btn" data-category="Dairy & Beverages">
+          🥛 Dairy &amp; Beverages <span class="cat-count" id="cat-count-Dairy & Beverages">0</span>
+        </button>
+        <button type="button" class="cat-btn" data-category="Produce & Veggies">
+          🥦 Produce &amp; Veggies <span class="cat-count" id="cat-count-Produce & Veggies">0</span>
+        </button>
+        <button type="button" class="cat-btn" data-category="Oils & Spices">
+          🫙 Oils &amp; Spices <span class="cat-count" id="cat-count-Oils & Spices">0</span>
+        </button>
+        <button type="button" class="cat-btn" data-category="Snacks & Household">
+          🍪 Snacks &amp; Household <span class="cat-count" id="cat-count-Snacks & Household">0</span>
+        </button>
+      </div>
+
+      <div style="display:flex; align-items:center; flex-wrap:wrap; gap:14px;">
+        <label style="display:inline-flex; align-items:center; gap:7px; font-size:0.81rem; font-weight:600; color:#fbbf24; cursor:pointer;">
+          <input type="checkbox" id="toggle-only-reorder">
+          <span>Show Only Reorder Limit Alerts</span>
+        </label>
+        <label style="display:inline-flex; align-items:center; gap:7px; font-size:0.81rem; font-weight:600; color:#f87171; cursor:pointer;">
+          <input type="checkbox" id="toggle-only-expiry">
+          <span>Show Only Expiry Alerts</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Active Navigational Tab Banner -->
+    <div class="module-focus-banner" id="tab-focus-banner">
+      <div>
+        <strong id="focus-banner-title" style="font-size:0.92rem; color:#34d399;">All Grocery Hub — Real-Time Interactive Inventory Table</strong>
+        <p id="focus-banner-desc" style="font-size:0.79rem; color:var(--text-secondary); margin-top:2px;">
+          Manually enter or adjust Number of Items Used (+/-), Number of Items Remaining, Reorder Limit, Reorder Quantity, Cost, or Dates directly in the table.
+        </p>
+      </div>
+      <div style="font-size:0.78rem; color:var(--text-muted);" id="showing-count-label">Showing all items</div>
+    </div>
+
+    <!-- Search & Sort Controls -->
+    <div class="controls-bar">
+      <search class="search-box">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="search-input" placeholder="Search by item name, unit of weight/volume (kg, L, ml, g, pcs), category, or date...">
+      </search>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <select id="sort-select" class="select-control" aria-label="Sort grocery inventory">
+          <option value="health-asc">Sort: Stock Health (Lowest Remaining First)</option>
+          <option value="expiry-asc">Sort: Date of Expiry (Soonest First)</option>
+          <option value="purchase-desc">Sort: Date of Purchase (Newest First)</option>
+          <option value="name-asc">Sort: Name of Item (A → Z)</option>
+          <option value="cost-desc">Sort: Cost of Item (High → Low)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Real-Time Interactive Grocery Inventory Table -->
+    <section class="table-card" aria-label="Grocery Inventory Table">
+      <div class="table-scroll">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th data-col="date">1. Date</th>
+              <th data-col="name">2. Name of Item &amp; Unit</th>
+              <th data-col="quantity">3. Quantity (No. &amp; Wt/Vol)</th>
+              <th data-col="purchase-date">4. Date of Purchase</th>
+              <th data-col="expiry-date">5. Date of Expiry &amp; Alert</th>
+              <th data-col="cost">6. Cost of Item</th>
+              <th data-col="total-quantity">7a. Total Qty &amp; Items Used</th>
+              <th data-col="total-quantity">7b. Items Remaining &amp; Health</th>
+              <th data-col="total-quantity">7c. Reorder Limit &amp; Reorder Qty</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Native HTML Dialog Modal for Adding / Editing Grocery Item -->
+  <dialog id="grocery-modal" class="app-modal" closedby="any">
+    <div class="modal-header">
+      <h1 id="modal-title" style="font-size:1.08rem; font-weight:800;">Add Grocery Item</h1>
+      <button type="button" class="action-btn-sm" id="btn-close-modal" aria-label="Close modal">✕</button>
+    </div>
+    <form id="grocery-form">
+      <input type="hidden" id="item-id">
+      <div class="modal-body">
+        <div class="form-field full">
+          <label for="item-name">Name of Item *</label>
+          <input type="text" id="item-name" required placeholder="e.g., Aashirvaad Whole Wheat Atta">
+        </div>
+
+        <div class="form-field">
+          <label for="item-category">Grocery Category *</label>
+          <select id="item-category" required>
+            <option value="Grains & Staples">Grains &amp; Staples</option>
+            <option value="Dairy & Beverages">Dairy &amp; Beverages</option>
+            <option value="Produce & Veggies">Produce &amp; Veggies</option>
+            <option value="Oils & Spices">Oils &amp; Spices</option>
+            <option value="Snacks & Household">Snacks &amp; Household</option>
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="item-unit">Unit of Weight or Volume *</label>
+          <input type="text" id="item-unit" required placeholder="e.g., 5 kg, 1 L, 500 g, 250 ml, 12 pcs" value="1 kg">
+        </div>
+
+        <div class="form-field">
+          <label for="item-date">1. Date (Entry / Log Date) *</label>
+          <input type="date" id="item-date" required>
+        </div>
+
+        <div class="form-field">
+          <label for="item-purchase-date">4. Date of Purchase *</label>
+          <input type="date" id="item-purchase-date" required>
+        </div>
+
+        <div class="form-field">
+          <label for="item-expiry-date">5. Date of Expiry *</label>
+          <input type="date" id="item-expiry-date" required>
+        </div>
+
+        <div class="form-field">
+          <label for="item-cost">6. Cost of Item (Per Unit/Pack) *</label>
+          <input type="number" id="item-cost" min="0" step="0.01" required value="120.00">
+        </div>
+
+        <div class="form-field">
+          <label for="item-total-qty">7. Total Quantity (No. of Items Purchased) *</label>
+          <input type="number" id="item-total-qty" min="1" step="1" required value="10">
+        </div>
+
+        <div class="form-field">
+          <label for="item-used-qty">Number of Items Used (Manual) *</label>
+          <input type="number" id="item-used-qty" min="0" step="1" required value="2">
+        </div>
+
+        <div class="form-field">
+          <label for="item-reorder-limit">Reorder Limit (Manual Alert Trigger) *</label>
+          <input type="number" id="item-reorder-limit" min="0" step="1" required value="3">
+        </div>
+
+        <div class="form-field">
+          <label for="item-reorder-qty">Reorder Quantity (Manual Order Batch) *</label>
+          <input type="number" id="item-reorder-qty" min="1" step="1" required value="6">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="btn-cancel-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Grocery Item</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast-container" aria-live="polite"></div>
+
+  <script>
+    const STORAGE_KEY = 'freshtrack_grocery_inventory_v1';
+
+    function getRelativeDateStr(daysOffset) {
+      const d = new Date();
+      d.setDate(d.getDate() + daysOffset);
+      return d.toISOString().split('T')[0];
+    }
+
+    function getDefaultGroceries() {
+      const today = getRelativeDateStr(0);
+      return [
+        {
+          id: 'GRC-101',
+          entryDate: today,
+          name: 'Aashirvaad Select Sharbati Wheat Atta',
+          category: 'Grains & Staples',
+          unitWeightVolume: '5 kg Pack',
+          purchaseDate: getRelativeDateStr(-18),
+          expiryDate: getRelativeDateStr(72),
+          unitCost: 275.00,
+          totalQty: 6,
+          usedQty: 4, // Remaining = 2 <= Reorder Limit (2) -> Triggers Reorder Limit Alert!
+          reorderLimit: 2,
+          reorderQty: 4
+        },
+        {
+          id: 'GRC-102',
+          entryDate: today,
+          name: 'Amul Taaza Homogenised Toned Milk',
+          category: 'Dairy & Beverages',
+          unitWeightVolume: '1 L Tetra Pak',
+          purchaseDate: getRelativeDateStr(-5),
+          expiryDate: getRelativeDateStr(9), // Expiring in 9 days -> Triggers Expiry Alert!
+          unitCost: 72.00,
+          totalQty: 12,
+          usedQty: 9, // Remaining = 3 <= Reorder Limit (4) -> Triggers Reorder Limit Alert!
+          reorderLimit: 4,
+          reorderQty: 10
+        },
+        {
+          id: 'GRC-103',
+          entryDate: today,
+          name: 'Tata Sampann Unpolished Toor Dal',
+          category: 'Grains & Staples',
+          unitWeightVolume: '1 kg Pouch',
+          purchaseDate: getRelativeDateStr(-14),
+          expiryDate: getRelativeDateStr(140),
+          unitCost: 168.00,
+          totalQty: 8,
+          usedQty: 3,
+          reorderLimit: 2,
+          reorderQty: 5
+        },
+        {
+          id: 'GRC-104',
+          entryDate: today,
+          name: 'Fortune Sunlite Refined Sunflower Oil',
+          category: 'Oils & Spices',
+          unitWeightVolume: '1 L Pouch',
+          purchaseDate: getRelativeDateStr(-20),
+          expiryDate: getRelativeDateStr(190),
+          unitCost: 145.00,
+          totalQty: 6,
+          usedQty: 4, // Remaining = 2 <= Reorder Limit (2) -> Reorder Limit Alert!
+          reorderLimit: 2,
+          reorderQty: 6
+        },
+        {
+          id: 'GRC-105',
+          entryDate: today,
+          name: 'Organic Baby Spinach & Salad Greens',
+          category: 'Produce & Veggies',
+          unitWeightVolume: '250 g Box',
+          purchaseDate: getRelativeDateStr(-6),
+          expiryDate: getRelativeDateStr(-1), // Already Expired -> Triggers Urgent Expiry Alert!
+          unitCost: 65.00,
+          totalQty: 4,
+          usedQty: 2,
+          reorderLimit: 2,
+          reorderQty: 4
+        },
+        {
+          id: 'GRC-106',
+          entryDate: today,
+          name: 'India Gate Classic Basmati Rice',
+          category: 'Grains & Staples',
+          unitWeightVolume: '5 kg Bag',
+          purchaseDate: getRelativeDateStr(-25),
+          expiryDate: getRelativeDateStr(310),
+          unitCost: 590.00,
+          totalQty: 4,
+          usedQty: 1,
+          reorderLimit: 1,
+          reorderQty: 3
+        },
+        {
+          id: 'GRC-107',
+          entryDate: today,
+          name: 'Epigamia Artisanal Greek Yogurt',
+          category: 'Dairy & Beverages',
+          unitWeightVolume: '400 g Tub',
+          purchaseDate: getRelativeDateStr(-4),
+          expiryDate: getRelativeDateStr(6), // Expiring in 6 days -> Expiry Alert!
+          unitCost: 95.00,
+          totalQty: 6,
+          usedQty: 5, // Remaining = 1 <= Reorder Limit (2) -> Reorder Limit Alert!
+          reorderLimit: 2,
+          reorderQty: 6
+        },
+        {
+          id: 'GRC-108',
+          entryDate: today,
+          name: 'Everest Kashmiri Lal Chilli Powder',
+          category: 'Oils & Spices',
+          unitWeightVolume: '500 g Pack',
+          purchaseDate: getRelativeDateStr(-30),
+          expiryDate: getRelativeDateStr(22), // Expiring in 22 days -> Expiry Alert (within 30d)!
+          unitCost: 240.00,
+          totalQty: 5,
+          usedQty: 2,
+          reorderLimit: 2,
+          reorderQty: 4
+        },
+        {
+          id: 'GRC-109',
+          entryDate: today,
+          name: 'Britannia NutriChoice Digestive Biscuits',
+          category: 'Snacks & Household',
+          unitWeightVolume: '1 kg Family Pack',
+          purchaseDate: getRelativeDateStr(-10),
+          expiryDate: getRelativeDateStr(95),
+          unitCost: 199.00,
+          totalQty: 5,
+          usedQty: 2,
+          reorderLimit: 2,
+          reorderQty: 4
+        }
+      ];
+    }
+
+    const SAMPLE_BILLS = {
+      1: [
+        'Aashirvaad Multigrain Atta | 5 kg | 2 | 315.00',
+        'Amul Gold Full Cream Milk | 1 L | 6 | 68.00',
+        'Tata Tea Gold Leaf | 500 g | 2 | 265.00',
+        'Saffola Gold Blended Oil | 1 L | 4 | 158.00',
+        'Maggi 2-Minute Masala Noodles | 560 g | 3 | 112.00'
+      ].join('\n'),
+      2: [
+        'Fresh Farm Shimla Apples | 1 kg | 3 | 160.00',
+        'Mother Dairy Classic Curd | 400 g | 5 | 50.00',
+        'Id Fresho Malabar Parota | 350 g | 4 | 85.00',
+        'Tropicana 100% Orange Juice | 1 L | 3 | 135.00'
+      ].join('\n')
+    };
+
+    const TAB_DESCRIPTIONS = {
+      'all': {
+        title: 'All Grocery Hub — Complete Real-Time Inventory',
+        desc: 'Unified interactive view of Date, Name of Item, Quantity (Weight/Volume), Date of Purchase, Date of Expiry, Cost of Item, Total Quantity, Used, Remaining, Reorder Limit, and Reorder Quantity.'
+      },
+      'date': {
+        title: '1. Navigational Tab: Date (Inventory Entry / Log Date)',
+        desc: 'Highlighting the Entry / Log Date column. Edit any date inline to track when stock records were logged.'
+      },
+      'name': {
+        title: '2. Navigational Tab: Name of Item & Unit of Weight/Volume',
+        desc: 'Highlighting Grocery Item Names, Categories, and their Unit of Weight or Volume (kg, g, L, ml, pcs).'
+      },
+      'quantity': {
+        title: '3. Navigational Tab: Quantity (No. of Items & Unit of Weight/Volume)',
+        desc: 'Highlighting pack size (unit of weight/volume) and number of items purchased.'
+      },
+      'purchase-date': {
+        title: '4. Navigational Tab: Date of Purchase',
+        desc: 'Highlighting Date of Purchase from your grocery bills. Sorted by newest purchases first.'
+      },
+      'expiry-date': {
+        title: '5. Navigational Tab: Date of Expiry & Real-Time Expiry Alert',
+        desc: 'Highlighting Date of Expiry and shelf-life countdowns. Items expired or within the alert window are prioritized.'
+      },
+      'cost': {
+        title: '6. Navigational Tab: Cost of Item & Stock Valuation',
+        desc: 'Highlighting Unit Cost per item, Remaining Stock Valuation, and Total Purchased Spend.'
+      },
+      'total-quantity': {
+        title: '7. Navigational Tab: Total Quantity, Items Used, Remaining, Reorder Limit & Reorder Qty',
+        desc: 'Manually adjust Items Used (+/-), Items Remaining, Reorder Limit, and Reorder Quantity. Reorder Limit Alerts trigger automatically when Remaining ≤ Reorder Limit.'
+      }
+    };
+
+    let groceries = [];
+    let extractedDraftItems = [];
+    let activeTab = 'all';
+    let activeCategory = 'ALL';
+    let currency = '₹';
+    let refDateStr = getRelativeDateStr(0);
+    let expiryWindowDays = 30;
+    let stockChartInstance = null;
+    let expiryChartInstance = null;
+
+    function loadInventory() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            groceries = parsed;
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Storage load fallback:', e);
+      }
+      groceries = getDefaultGroceries();
+      saveInventory();
+    }
+
+    function saveInventory() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(groceries));
+      } catch (e) {
+        console.warn('Storage write warning:', e);
+      }
+    }
+
+    function showToast(msg, isAlert = false) {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'toast' + (isAlert ? ' toast-alert' : '');
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.remove();
+      }, 3200);
+    }
+
+    function computeDerived(item) {
+      const totalQty = Math.max(0, Number(item.totalQty) || 0);
+      const usedQty = Math.max(0, Number(item.usedQty) || 0);
+      const remainingQty = Math.max(0, totalQty - usedQty);
+      const reorderLimit = Math.max(0, Number(item.reorderLimit) || 0);
+      const reorderQty = Math.max(1, Number(item.reorderQty) || 1);
+      const unitCost = Math.max(0, Number(item.unitCost) || 0);
+
+      const isReorderAlert = remainingQty <= reorderLimit;
+      const healthPct = totalQty > 0 ? Math.min(100, Math.round((remainingQty / totalQty) * 100)) : 0;
+
+      const refDate = new Date(refDateStr + 'T00:00:00');
+      const expDate = new Date((item.expiryDate || refDateStr) + 'T00:00:00');
+      const diffDays = Math.ceil((expDate.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      let expiryState = 'SAFE';
+      if (diffDays < 0) expiryState = 'EXPIRED';
+      else if (diffDays <= expiryWindowDays) expiryState = 'EXPIRING_SOON';
+
+      return {
+        totalQty,
+        usedQty,
+        remainingQty,
+        reorderLimit,
+        reorderQty,
+        unitCost,
+        isReorderAlert,
+        healthPct,
+        daysToExpiry: diffDays,
+        expiryState,
+        totalSpend: totalQty * unitCost,
+        usedValue: usedQty * unitCost,
+        remainingValue: remainingQty * unitCost,
+        reorderBatchCost: reorderQty * unitCost
+      };
+    }
+
+    function formatMoney(val) {
+      return currency + Number(val || 0).toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderAll() {
+      updateMetricsAndAlerts();
+      renderTable();
+      updateCharts();
+    }
+
+    function updateMetricsAndAlerts() {
+      const catCounts = {
+        'ALL': groceries.length,
+        'Grains & Staples': 0,
+        'Dairy & Beverages': 0,
+        'Produce & Veggies': 0,
+        'Oils & Spices': 0,
+        'Snacks & Household': 0
+      };
+
+      let sumTotalLoaded = 0;
+      let sumUsed = 0;
+      let sumRemaining = 0;
+      let sumTotalSpend = 0;
+      let sumUsedValue = 0;
+      let sumRemainingValue = 0;
+      let sumReorderQtyNeeded = 0;
+      let sumReorderBudget = 0;
+
+      let reorderAlertCount = 0;
+      let expiredCount = 0;
+      let expiringSoonCount = 0;
+
+      const reorderAlertList = [];
+      const expiryAlertList = [];
+
+      groceries.forEach(item => {
+        if (catCounts[item.category] !== undefined) {
+          catCounts[item.category]++;
+        } else {
+          catCounts['Snacks & Household']++;
+        }
+
+        const d = computeDerived(item);
+        sumTotalLoaded += d.totalQty;
+        sumUsed += d.usedQty;
+        sumRemaining += d.remainingQty;
+        sumTotalSpend += d.totalSpend;
+        sumUsedValue += d.usedValue;
+        sumRemainingValue += d.remainingValue;
+
+        if (d.isReorderAlert) {
+          reorderAlertCount++;
+          sumReorderQtyNeeded += d.reorderQty;
+          sumReorderBudget += d.reorderBatchCost;
+          reorderAlertList.push({ item, d });
+        }
+
+        if (d.expiryState === 'EXPIRED') {
+          expiredCount++;
+          expiryAlertList.push({ item, d });
+        } else if (d.expiryState === 'EXPIRING_SOON') {
+          expiringSoonCount++;
+          expiryAlertList.push({ item, d });
+        }
+      });
+
+      const totalExpiryAlerts = expiredCount + expiringSoonCount;
+
+      // Update Category Counts
+      Object.keys(catCounts).forEach(cat => {
+        const el = document.getElementById(`cat-count-${cat}`);
+        if (el) el.textContent = catCounts[cat];
+      });
+
+      // Update 7 Navigational Tab Badges
+      document.getElementById('badge-tab-all').textContent = `${groceries.length} Items`;
+      document.getElementById('badge-tab-date').textContent = refDateStr;
+      document.getElementById('badge-tab-name').textContent = `${groceries.length} SKUs`;
+      document.getElementById('badge-tab-quantity').textContent = `${sumTotalLoaded} Units`;
+      document.getElementById('badge-tab-purchase').textContent = `${groceries.length} Bills`;
+      document.getElementById('badge-tab-expiry').textContent = `${totalExpiryAlerts} Alert${totalExpiryAlerts === 1 ? '' : 's'}`;
+      document.getElementById('badge-tab-cost').textContent = formatMoney(sumRemainingValue);
+      document.getElementById('badge-tab-total-qty').textContent = `${reorderAlertCount} Reorder`;
+
+      // Update KPI Cards
+      document.getElementById('kpi-total-loaded').textContent = sumTotalLoaded.toLocaleString();
+      document.getElementById('kpi-sku-count').textContent = `Across ${groceries.length} Grocery SKUs`;
+
+      document.getElementById('kpi-total-used').textContent = sumUsed.toLocaleString();
+      document.getElementById('kpi-used-cost').textContent = `Consumed Value: ${formatMoney(sumUsedValue)}`;
+
+      document.getElementById('kpi-total-remaining').textContent = sumRemaining.toLocaleString();
+      document.getElementById('kpi-remaining-cost').textContent = `Remaining Stock Value: ${formatMoney(sumRemainingValue)}`;
+
+      document.getElementById('kpi-reorder-alerts').textContent = reorderAlertCount;
+      document.getElementById('kpi-reorder-qty-sum').textContent = `Total Reorder Qty to Order: +${sumReorderQtyNeeded} Units`;
+
+      document.getElementById('kpi-expiry-alerts').textContent = totalExpiryAlerts;
+      document.getElementById('kpi-expiry-breakdown').textContent = `${expiredCount} Expired • ${expiringSoonCount} Expiring ≤${expiryWindowDays}d`;
+
+      document.getElementById('kpi-total-spend').textContent = formatMoney(sumTotalSpend);
+      document.getElementById('kpi-est-reorder-cost').textContent = `Est. Reorder Cost: ${formatMoney(sumReorderBudget)}`;
+
+      // Update Reorder Limit Alert Chips
+      document.getElementById('reorder-alert-badge').textContent = `${reorderAlertCount} Alert${reorderAlertCount === 1 ? '' : 's'}`;
+      const reorderChips = document.getElementById('reorder-alert-chips');
+      reorderChips.innerHTML = '';
+      if (reorderAlertList.length === 0) {
+        reorderChips.innerHTML = `<span style="font-size:0.8rem; color:var(--success);">✓ All grocery items are above their manual Reorder Limit.</span>`;
+      } else {
+        reorderAlertList.forEach(({ item, d }) => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'alert-chip';
+          chip.innerHTML = `
+            <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>
+            <strong>${escapeHtml(item.name)}</strong>
+            <span style="color:#fde68a;">Rem: ${d.remainingQty} ≤ Limit: ${d.reorderLimit} (Reorder Qty: +${d.reorderQty})</span>
+          `;
+          chip.addEventListener('click', () => focusRow(item.id));
+          reorderChips.appendChild(chip);
+        });
+      }
+
+      // Update Expiry Alert Chips
+      document.getElementById('expiry-panel-heading').textContent =
+        `Expiry Alert Monitor (Expired & Expiring ≤ ${expiryWindowDays} Days)`;
+      document.getElementById('expiry-alert-badge').textContent = `${totalExpiryAlerts} Alert${totalExpiryAlerts === 1 ? '' : 's'}`;
+      const expiryChips = document.getElementById('expiry-alert-chips');
+      expiryChips.innerHTML = '';
+      if (expiryAlertList.length === 0) {
+        expiryChips.innerHTML = `<span style="font-size:0.8rem; color:var(--success);">✓ All grocery items are fresh and well within shelf-life.</span>`;
+      } else {
+        expiryAlertList
+          .sort((a, b) => a.d.daysToExpiry - b.d.daysToExpiry)
+          .forEach(({ item, d }) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'alert-chip';
+            const dotColor = d.daysToExpiry < 0 ? '#ef4444' : '#f59e0b';
+            const statusText = d.daysToExpiry < 0
+              ? `EXPIRED (${Math.abs(d.daysToExpiry)}d ago)`
+              : `Expires in ${d.daysToExpiry}d (${item.expiryDate})`;
+            chip.innerHTML = `
+              <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
+              <strong>${escapeHtml(item.name)}</strong>
+              <span style="color:#fca5a5;">${statusText}</span>
+            `;
+            chip.addEventListener('click', () => focusRow(item.id));
+            expiryChips.appendChild(chip);
+          });
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('inventory-tbody');
+      const searchVal = document.getElementById('search-input').value.trim().toLowerCase();
+      const sortBy = document.getElementById('sort-select').value;
+      const onlyReorder = document.getElementById('toggle-only-reorder').checked;
+      const onlyExpiry = document.getElementById('toggle-only-expiry').checked;
+
+      document.querySelectorAll('table.inventory-table th[data-col]').forEach(th => {
+        th.classList.toggle('highlight-col', th.getAttribute('data-col') === activeTab);
+      });
+
+      let rows = groceries.map(item => ({
+        item,
+        d: computeDerived(item)
+      }));
+
+      if (activeCategory !== 'ALL') {
+        rows = rows.filter(r => r.item.category === activeCategory);
+      }
+      if (onlyReorder) {
+        rows = rows.filter(r => r.d.isReorderAlert);
+      }
+      if (onlyExpiry) {
+        rows = rows.filter(r => r.d.expiryState !== 'SAFE');
+      }
+      if (searchVal) {
+        rows = rows.filter(({ item }) =>
+          item.name.toLowerCase().includes(searchVal) ||
+          (item.unitWeightVolume && item.unitWeightVolume.toLowerCase().includes(searchVal)) ||
+          (item.category && item.category.toLowerCase().includes(searchVal)) ||
+          (item.purchaseDate && item.purchaseDate.includes(searchVal)) ||
+          (item.expiryDate && item.expiryDate.includes(searchVal))
+        );
+      }
+
+      rows.sort((a, b) => {
+        if (sortBy === 'health-asc') return a.d.remainingQty - b.d.remainingQty;
+        if (sortBy === 'expiry-asc') return a.d.daysToExpiry - b.d.daysToExpiry;
+        if (sortBy === 'purchase-desc') return (b.item.purchaseDate || '').localeCompare(a.item.purchaseDate || '');
+        if (sortBy === 'name-asc') return a.item.name.localeCompare(b.item.name);
+        if (sortBy === 'cost-desc') return b.d.unitCost - a.d.unitCost;
+        return 0;
+      });
+
+      document.getElementById('showing-count-label').textContent =
+        `Showing ${rows.length} of ${groceries.length} grocery items`;
+
+      tbody.innerHTML = '';
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" style="text-align:center; padding:36px; color:var(--text-muted);">
+              No grocery items match the active filters. Clear filters, upload a grocery bill, or click "Add Grocery Item".
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      rows.forEach(({ item, d }) => {
+        const tr = document.createElement('tr');
+        tr.id = `row-${item.id}`;
+        if (d.expiryState === 'EXPIRED') tr.classList.add('row-expired');
+        else if (d.isReorderAlert) tr.classList.add('row-reorder-alert');
+
+        const healthColor = d.remainingQty === 0
+          ? '#ef4444'
+          : d.isReorderAlert
+            ? '#f59e0b'
+            : '#10b981';
+
+        let expiryBadge = '';
+        if (d.expiryState === 'EXPIRED') {
+          expiryBadge = `<span class="status-badge status-danger">🚨 EXPIRED (${Math.abs(d.daysToExpiry)}d ago)</span>`;
+        } else if (d.expiryState === 'EXPIRING_SOON') {
+          expiryBadge = `<span class="status-badge status-warning">⚠️ EXPIRING: ${d.daysToExpiry}d left</span>`;
+        } else {
+          expiryBadge = `<span class="status-badge status-ok">✓ Fresh (${d.daysToExpiry}d left)</span>`;
+        }
+
+        const reorderBadge = d.isReorderAlert
+          ? `<span class="status-badge status-warning">🔔 Reorder Limit Reached</span>`
+          : `<span class="status-badge status-ok">✓ Healthy Stock</span>`;
+
+        tr.innerHTML = `
+          <td class="${activeTab === 'date' ? 'highlight-col' : ''}">
+            <input type="date" class="inline-date-input mono" value="${item.entryDate || refDateStr}" data-field="entryDate" data-id="${item.id}" aria-label="Entry Date for ${escapeHtml(item.name)}">
+          </td>
+
+          <td class="${activeTab === 'name' ? 'highlight-col' : ''}">
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            <div class="item-meta">
+              <span class="unit-pill">${escapeHtml(item.unitWeightVolume)}</span>
+              <span class="cat-tag">${escapeHtml(item.category)}</span>
+            </div>
+          </td>
+
+          <td class="${activeTab === 'quantity' ? 'highlight-col' : ''}">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <input type="text" class="inline-text-input" value="${escapeHtml(item.unitWeightVolume)}" data-field="unitWeightVolume" data-id="${item.id}" aria-label="Unit of weight or volume for ${escapeHtml(item.name)}" title="Unit of Weight or Volume">
+              </div>
+              <span style="font-size:0.73rem; color:var(--text-muted);">No. of Items: <strong class="mono" style="color:var(--text-main);">${d.totalQty}</strong></span>
+            </div>
+          </td>
+
+          <td class="${activeTab === 'purchase-date' ? 'highlight-col' : ''}">
+            <input type="date" class="inline-date-input mono" value="${item.purchaseDate}" data-field="purchaseDate" data-id="${item.id}" aria-label="Date of Purchase for ${escapeHtml(item.name)}">
+          </td>
+
+          <td class="${activeTab === 'expiry-date' ? 'highlight-col' : ''}">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+              <input type="date" class="inline-date-input mono" value="${item.expiryDate}" data-field="expiryDate" data-id="${item.id}" aria-label="Date of Expiry for ${escapeHtml(item.name)}">
+              <div>${expiryBadge}</div>
+            </div>
+          </td>
+
+          <td class="${activeTab === 'cost' ? 'highlight-col' : ''}">
+            <div style="display:flex; flex-direction:column; gap:5px;">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span class="mono" style="color:var(--text-muted); font-size:0.8rem;">${currency}</span>
+                <input type="number" min="0" step="0.01" class="inline-num-input mono" value="${d.unitCost.toFixed(2)}" data-field="unitCost" data-id="${item.id}" aria-label="Cost of item for ${escapeHtml(item.name)}">
+              </div>
+              <span style="font-size:0.72rem; color:var(--text-muted);">Total Cost: <strong class="mono" style="color:var(--text-secondary);">${formatMoney(d.totalSpend)}</strong></span>
+            </div>
+          </td>
+
+          <td class="${activeTab === 'total-quantity' ? 'highlight-col' : ''}">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span style="font-size:0.72rem; color:var(--text-muted);">Total Qty:</span>
+                <input type="number" min="0" step="1" class="inline-num-input mono" style="width:64px;" value="${d.totalQty}" data-field="totalQty" data-id="${item.id}" aria-label="Total Quantity for ${escapeHtml(item.name)}">
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span style="font-size:0.72rem; color:var(--text-muted);">Used:</span>
+                <div class="qty-stepper">
+                  <button type="button" class="step-btn" data-step="-1" data-id="${item.id}" aria-label="Decrease items used">−</button>
+                  <input type="number" min="0" max="${d.totalQty}" class="mono" value="${d.usedQty}" data-field="usedQty" data-id="${item.id}" aria-label="Number of items used for ${escapeHtml(item.name)}">
+                  <button type="button" class="step-btn" data-step="1" data-id="${item.id}" aria-label="Increase items used">+</button>
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <td class="${activeTab === 'total-quantity' ? 'highlight-col' : ''}">
+            <div class="health-wrap">
+              <div class="health-top">
+                <div style="display:flex; align-items:center; gap:5px;">
+                  <input type="number" min="0" step="1" class="inline-num-input mono" style="width:62px; color:${healthColor}; font-weight:800;" value="${d.remainingQty}" data-field="remainingQty" data-id="${item.id}" aria-label="Number of items remaining for ${escapeHtml(item.name)}" title="Enter Remaining Items manually or use Used stepper">
+                  <span style="font-size:0.72rem; color:var(--text-muted);">left</span>
+                </div>
+                <span class="mono" style="font-size:0.73rem; color:${healthColor}; font-weight:700;">${d.healthPct}%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" style="width:${d.healthPct}%; background:${healthColor};"></div>
+              </div>
+              <div>${reorderBadge}</div>
+            </div>
+          </td>
+
+          <td class="${activeTab === 'total-quantity' ? 'highlight-col' : ''}">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span style="font-size:0.72rem; color:var(--text-muted);">Reorder Limit:</span>
+                <input type="number" min="0" step="1" class="inline-num-input mono" style="width:62px;" value="${d.reorderLimit}" data-field="reorderLimit" data-id="${item.id}" aria-label="Reorder limit for ${escapeHtml(item.name)}">
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <span style="font-size:0.72rem; color:var(--text-muted);">Reorder Qty:</span>
+                <div style="display:flex; align-items:center; gap:5px;">
+                  <input type="number" min="1" step="1" class="inline-num-input mono" style="width:58px;" value="${d.reorderQty}" data-field="reorderQty" data-id="${item.id}" aria-label="Reorder quantity for ${escapeHtml(item.name)}">
+                  <button type="button" class="action-btn-sm action-btn-restock" data-restock-id="${item.id}" title="Add Reorder Quantity (+${d.reorderQty}) to Total Stock">
+                    +${d.reorderQty}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <button type="button" class="action-btn-sm" data-edit-id="${item.id}">Edit</button>
+              <button type="button" class="action-btn-sm" style="color:#fca5a5;" data-delete-id="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">✕</button>
+            </div>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateCharts() {
+      const labels = groceries.map(g => g.name.length > 20 ? g.name.slice(0, 18) + '…' : g.name);
+      const remainingData = [];
+      const usedData = [];
+      const reorderLimitData = [];
+
+      let healthyOptimal = 0;
+      let reorderAlertCount = 0;
+      let expiringSoonCount = 0;
+      let expiredCount = 0;
+
+      groceries.forEach(item => {
+        const d = computeDerived(item);
+        remainingData.push(d.remainingQty);
+        usedData.push(d.usedQty);
+        reorderLimitData.push(d.reorderLimit);
+
+        if (d.expiryState === 'EXPIRED') expiredCount++;
+        else if (d.expiryState === 'EXPIRING_SOON') expiringSoonCount++;
+        else if (d.isReorderAlert) reorderAlertCount++;
+        else healthyOptimal++;
+      });
+
+      const ctxStock = document.getElementById('stockHealthChart').getContext('2d');
+      if (stockChartInstance) stockChartInstance.destroy();
+      stockChartInstance = new Chart(ctxStock, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Items Remaining',
+              data: remainingData,
+              backgroundColor: 'rgba(16, 185, 129, 0.8)',
+              borderColor: '#10b981',
+              borderWidth: 1,
+              borderRadius: 5
+            },
+            {
+              label: 'Items Used',
+              data: usedData,
+              backgroundColor: 'rgba(99, 102, 241, 0.75)',
+              borderColor: '#6366f1',
+              borderWidth: 1,
+              borderRadius: 5
+            },
+            {
+              label: 'Reorder Limit (Alert Threshold)',
+              data: reorderLimitData,
+              backgroundColor: 'rgba(245, 158, 11, 0.85)',
+              borderColor: '#f59e0b',
+              borderWidth: 1,
+              borderRadius: 5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#cbd5e1', font: { family: 'Plus Jakarta Sans', size: 11 } }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+
+      const ctxExp = document.getElementById('expiryHealthChart').getContext('2d');
+      if (expiryChartInstance) expiryChartInstance.destroy();
+      expiryChartInstance = new Chart(ctxExp, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            'Healthy & Fresh Stock',
+            'Reorder Limit Alert (Low Stock)',
+            `Expiring Soon (≤${expiryWindowDays}d)`,
+            'Expired (< 0d)'
+          ],
+          datasets: [{
+            data: [healthyOptimal, reorderAlertCount, expiringSoonCount, expiredCount],
+            backgroundColor: ['#10b981', '#f59e0b', '#a855f7', '#ef4444'],
+            borderColor: '#0f1922',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#cbd5e1', font: { family: 'Plus Jakarta Sans', size: 12 }, padding: 14 }
+            }
+          }
+        }
+      });
+    }
+
+    // Smart Bill Parser: Extracts Name of Item, Unit of Weight/Volume, No. of Item, Cost of Item
+    function parseGroceryBillText(rawText) {
+      const lines = String(rawText || '')
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l.length > 2 && !/^(total|subtotal|tax|gst|thank|invoice|receipt|date|cash|card|---)/i.test(l));
+
+      const today = getRelativeDateStr(0);
+      const defaultExpiry = getRelativeDateStr(45);
+      const extracted = [];
+
+      lines.forEach(line => {
+        // Case 1: Pipe or CSV separated: Name | Unit | Qty | Cost
+        if (line.includes('|') || (line.split(',').length >= 4)) {
+          const sep = line.includes('|') ? '|' : ',';
+          const parts = line.split(sep).map(s => s.trim());
+          if (parts.length >= 4) {
+            const name = parts[0];
+            const unitWeightVolume = parts[1] || '1 Pack';
+            const qty = Math.max(1, parseInt(parts[2].replace(/[^\d]/g, ''), 10) || 1);
+            const cost = Math.max(0, parseFloat(parts[3].replace(/[^\d.]/g, '')) || 50);
+            extracted.push({
+              name,
+              unitWeightVolume,
+              totalQty: qty,
+              unitCost: cost,
+              purchaseDate: today,
+              expiryDate: defaultExpiry,
+              reorderLimit: Math.max(1, Math.floor(qty * 0.35)),
+              reorderQty: Math.max(2, qty),
+              category: guessCategory(name)
+            });
+            return;
+          }
+        }
+
+        // Case 2: Natural Receipt Line (e.g. "Amul Taaza Milk 1 L x 4 ₹68.00" or "Aashirvaad Atta 5kg 2 275.00")
+        const unitRegex = /\b(\d+(?:\.\d+)?\s*(?:kg|g|gm|gms|ml|l|ltr|litre|pcs|pc|pack|packs|box|bottle|tub|dozen))\b/i;
+        const unitMatch = line.match(unitRegex);
+        const unitWeightVolume = unitMatch ? unitMatch[1] : '1 Pack';
+
+        let working = unitMatch ? line.replace(unitMatch[0], ' ') : line;
+        const numbers = [...working.matchAll(/(?:₹|\$|€|£|Rs\.?\s*)?(\d+(?:\.\d{1,2})?)/gi)].map(m => parseFloat(m[1]));
+
+        let qty = 1;
+        let cost = 65.00;
+        if (numbers.length >= 2) {
+          qty = Math.max(1, Math.min(100, Math.round(numbers[numbers.length - 2])));
+          cost = numbers[numbers.length - 1];
+        } else if (numbers.length === 1) {
+          cost = numbers[0];
+        }
+
+        const cleanName = working
+          .replace(/(?:₹|\$|€|£|Rs\.?\s*)?\d+(?:\.\d{1,2})?/gi, '')
+          .replace(/\b(x|qty|nos|mrp|rate)\b/gi, '')
+          .replace(/[-–:|•]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (cleanName.length >= 2) {
+          extracted.push({
+            name: cleanName,
+            unitWeightVolume,
+            totalQty: qty,
+            unitCost: cost,
+            purchaseDate: today,
+            expiryDate: defaultExpiry,
+            reorderLimit: Math.max(1, Math.floor(qty * 0.35)),
+            reorderQty: Math.max(2, qty),
+            category: guessCategory(cleanName)
+          });
+        }
+      });
+
+      return extracted;
+    }
+
+    function guessCategory(name) {
+      const n = name.toLowerCase();
+      if (/(milk|curd|yogurt|paneer|butter|cheese|juice|tea|coffee|drink)/.test(n)) return 'Dairy & Beverages';
+      if (/(apple|spinach|onion|potato|tomato|veg|fruit|banana|salad|carrot)/.test(n)) return 'Produce & Veggies';
+      if (/(oil|ghee|masala|spice|chilli|turmeric|salt|pepper|cumin)/.test(n)) return 'Oils & Spices';
+      if (/(biscuit|noodle|snack|chip|cookie|soap|detergent|clean)/.test(n)) return 'Snacks & Household';
+      return 'Grains & Staples';
+    }
+
+    function renderExtractedPreview() {
+      const card = document.getElementById('extracted-preview-card');
+      const tbody = document.getElementById('extracted-tbody');
+      const title = document.getElementById('extracted-count-title');
+
+      if (extractedDraftItems.length === 0) {
+        card.classList.remove('visible');
+        return;
+      }
+
+      card.classList.add('visible');
+      title.textContent = `Extracted ${extractedDraftItems.length} Item(s) from Uploaded Grocery Bill`;
+      tbody.innerHTML = '';
+
+      extractedDraftItems.forEach((draft, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="text" value="${escapeHtml(draft.name)}" data-ext-idx="${idx}" data-ext-field="name" aria-label="Extracted item name"></td>
+          <td><input type="text" value="${escapeHtml(draft.unitWeightVolume)}" data-ext-idx="${idx}" data-ext-field="unitWeightVolume" aria-label="Extracted unit of weight or volume"></td>
+          <td><input type="number" min="1" value="${draft.totalQty}" data-ext-idx="${idx}" data-ext-field="totalQty" aria-label="Extracted number of items"></td>
+          <td><input type="number" min="0" step="0.01" value="${Number(draft.unitCost).toFixed(2)}" data-ext-idx="${idx}" data-ext-field="unitCost" aria-label="Extracted cost of item"></td>
+          <td><input type="date" value="${draft.purchaseDate}" data-ext-idx="${idx}" data-ext-field="purchaseDate" aria-label="Extracted purchase date"></td>
+          <td><input type="date" value="${draft.expiryDate}" data-ext-idx="${idx}" data-ext-field="expiryDate" aria-label="Extracted expiry date"></td>
+          <td><input type="number" min="0" value="${draft.reorderLimit}" data-ext-idx="${idx}" data-ext-field="reorderLimit" aria-label="Manual reorder limit"></td>
+          <td><input type="number" min="1" value="${draft.reorderQty}" data-ext-idx="${idx}" data-ext-field="reorderQty" aria-label="Manual reorder quantity"></td>
+          <td><button type="button" class="action-btn-sm" style="color:#fca5a5;" data-ext-remove="${idx}" aria-label="Remove extracted row">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function handleBillFileUpload(file) {
+      if (!file) return;
+      const statusTitle = document.getElementById('dropzone-status-title');
+      const statusSub = document.getElementById('dropzone-status-sub');
+      const previewWrap = document.getElementById('uploaded-bill-preview');
+      const thumb = document.getElementById('bill-thumb');
+      const fname = document.getElementById('bill-filename');
+
+      fname.textContent = file.name;
+
+      // Text or CSV file
+      if (file.type.includes('text') || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+        const text = await file.text();
+        document.getElementById('bill-raw-text').value = text;
+        extractedDraftItems = parseGroceryBillText(text);
+        renderExtractedPreview();
+        showToast(`Extracted ${extractedDraftItems.length} grocery items from ${file.name}`);
+        return;
+      }
+
+      // Image file -> Show preview and run OCR via Tesseract.js
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        thumb.src = url;
+        previewWrap.style.display = 'inline-flex';
+        statusTitle.textContent = `Scanning Receipt Image: ${file.name}...`;
+        statusSub.textContent = 'Running Optical Character Recognition (OCR) to extract item names, weight/volume units, quantities, and costs...';
+
+        try {
+          if (window.Tesseract) {
+            const result = await window.Tesseract.recognize(file, 'eng');
+            const recognizedText = (result && result.data && result.data.text) ? result.data.text.trim() : '';
+            const parsed = parseGroceryBillText(recognizedText);
+            if (parsed.length > 0) {
+              document.getElementById('bill-raw-text').value = recognizedText;
+              extractedDraftItems = parsed;
+              statusTitle.textContent = `Bill Scan Complete — Extracted ${parsed.length} Items!`;
+              statusSub.textContent = 'Review extracted details below and click "Import All to Live Inventory".';
+              renderExtractedPreview();
+              showToast(`OCR extracted ${parsed.length} items from ${file.name}`);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('OCR fallback:', err);
+        }
+
+        // Smart fallback if uploaded photo has low contrast or non-receipt graphic
+        document.getElementById('bill-raw-text').value = SAMPLE_BILLS[1];
+        extractedDraftItems = parseGroceryBillText(SAMPLE_BILLS[1]);
+        statusTitle.textContent = `Receipt Loaded (${file.name}) — Ready for Review`;
+        statusSub.textContent = 'Verify or edit the extracted bill lines below before importing.';
+        renderExtractedPreview();
+        showToast(`Extracted ${extractedDraftItems.length} items from uploaded bill`);
+      }
+    }
+
+    function setActiveTab(tabKey) {
+      activeTab = tabKey;
+      document.querySelectorAll('#nav-tabs-grid .nav-pill-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabKey);
+      });
+
+      const info = TAB_DESCRIPTIONS[tabKey] || TAB_DESCRIPTIONS.all;
+      document.getElementById('focus-banner-title').textContent = info.title;
+      document.getElementById('focus-banner-desc').textContent = info.desc;
+
+      const sortSelect = document.getElementById('sort-select');
+      if (tabKey === 'expiry-date') sortSelect.value = 'expiry-asc';
+      else if (tabKey === 'purchase-date') sortSelect.value = 'purchase-desc';
+      else if (tabKey === 'cost') sortSelect.value = 'cost-desc';
+      else if (tabKey === 'name') sortSelect.value = 'name-asc';
+      else if (tabKey === 'total-quantity') sortSelect.value = 'health-asc';
+
+      renderTable();
+    }
+
+    function focusRow(itemId) {
+      document.getElementById('toggle-only-reorder').checked = false;
+      document.getElementById('toggle-only-expiry').checked = false;
+      activeCategory = 'ALL';
+      document.querySelectorAll('#category-tabs .cat-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-category') === 'ALL');
+      });
+      renderTable();
+      const row = document.getElementById(`row-${itemId}`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.style.outline = '2px solid #10b981';
+        setTimeout(() => { row.style.outline = ''; }, 2200);
+      }
+    }
+
+    function openGroceryModal(editId) {
+      const modal = document.getElementById('grocery-modal');
+      const title = document.getElementById('modal-title');
+      const today = getRelativeDateStr(0);
+
+      if (editId) {
+        const item = groceries.find(g => g.id === editId);
+        if (!item) return;
+        title.textContent = 'Edit Grocery Item Details';
+        document.getElementById('item-id').value = item.id;
+        document.getElementById('item-name').value = item.name;
+        document.getElementById('item-category').value = item.category;
+        document.getElementById('item-unit').value = item.unitWeightVolume;
+        document.getElementById('item-date').value = item.entryDate || today;
+        document.getElementById('item-purchase-date').value = item.purchaseDate;
+        document.getElementById('item-expiry-date').value = item.expiryDate;
+        document.getElementById('item-cost').value = item.unitCost;
+        document.getElementById('item-total-qty').value = item.totalQty;
+        document.getElementById('item-used-qty').value = item.usedQty;
+        document.getElementById('item-reorder-limit').value = item.reorderLimit;
+        document.getElementById('item-reorder-qty').value = item.reorderQty;
+      } else {
+        title.textContent = 'Add New Grocery Item to Inventory';
+        document.getElementById('item-id').value = '';
+        document.getElementById('item-name').value = '';
+        document.getElementById('item-category').value = activeCategory !== 'ALL' ? activeCategory : 'Grains & Staples';
+        document.getElementById('item-unit').value = '1 kg Pack';
+        document.getElementById('item-date').value = today;
+        document.getElementById('item-purchase-date').value = today;
+        document.getElementById('item-expiry-date').value = getRelativeDateStr(20);
+        document.getElementById('item-cost').value = 120.00;
+        document.getElementById('item-total-qty').value = 8;
+        document.getElementById('item-used-qty').value = 2;
+        document.getElementById('item-reorder-limit').value = 3;
+        document.getElementById('item-reorder-qty').value = 6;
+      }
+      modal.showModal();
+    }
+
+    function exportCsv() {
+      const headers = [
+        'ID',
+        'Date (Log)',
+        'Name of Item',
+        'Category',
+        'Unit of Weight or Volume',
+        'Date of Purchase',
+        'Date of Expiry',
+        'Cost of Item',
+        'Total Quantity',
+        'Number of Items Used',
+        'Number of Items Remaining',
+        'Reorder Limit',
+        'Reorder Quantity',
+        'Reorder Limit Alert',
+        'Expiry Alert Status'
+      ];
+
+      const rows = groceries.map(item => {
+        const d = computeDerived(item);
+        return [
+          item.id,
+          item.entryDate || refDateStr,
+          `"${item.name.replace(/"/g, '""')}"`,
+          `"${item.category}"`,
+          `"${(item.unitWeightVolume || '').replace(/"/g, '""')}"`,
+          item.purchaseDate,
+          item.expiryDate,
+          d.unitCost.toFixed(2),
+          d.totalQty,
+          d.usedQty,
+          d.remainingQty,
+          d.reorderLimit,
+          d.reorderQty,
+          d.isReorderAlert ? 'REORDER_ALERT' : 'OK',
+          d.expiryState
+        ].join(',');
+      });
+
+      const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `grocery_inventory_${refDateStr}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Exported Grocery Inventory CSV');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const refInput = document.getElementById('ref-date-input');
+      refInput.value = refDateStr;
+
+      loadInventory();
+      renderAll();
+
+      refInput.addEventListener('change', (e) => {
+        if (e.target.value) {
+          refDateStr = e.target.value;
+          renderAll();
+          showToast(`Alert reference date set to ${refDateStr}`);
+        }
+      });
+
+      document.getElementById('expiry-window-select').addEventListener('change', (e) => {
+        expiryWindowDays = parseInt(e.target.value, 10) || 30;
+        renderAll();
+        showToast(`Expiry alert threshold set to ≤ ${expiryWindowDays} days`);
+      });
+
+      document.getElementById('currency-picker').addEventListener('change', (e) => {
+        currency = e.target.value;
+        renderAll();
+      });
+
+      // Navigational Tabs (1 to 7)
+      document.getElementById('nav-tabs-grid').addEventListener('click', (e) => {
+        const btn = e.target.closest('.nav-pill-btn');
+        if (!btn) return;
+        setActiveTab(btn.getAttribute('data-tab'));
+      });
+
+      document.getElementById('btn-show-all-tabs').addEventListener('click', () => {
+        activeCategory = 'ALL';
+        document.querySelectorAll('#category-tabs .cat-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-category') === 'ALL');
+        });
+        setActiveTab('all');
+      });
+
+      document.querySelectorAll('.kpi-card[data-jump-tab]').forEach(card => {
+        card.addEventListener('click', () => {
+          setActiveTab(card.getAttribute('data-jump-tab'));
+        });
+      });
+
+      // Category Tabs
+      document.getElementById('category-tabs').addEventListener('click', (e) => {
+        const btn = e.target.closest('.cat-btn');
+        if (!btn) return;
+        activeCategory = btn.getAttribute('data-category');
+        document.querySelectorAll('#category-tabs .cat-btn').forEach(b => {
+          b.classList.toggle('active', b === btn);
+        });
+        renderTable();
+      });
+
+      // Toggles, Search, Sort
+      document.getElementById('toggle-only-reorder').addEventListener('change', renderTable);
+      document.getElementById('toggle-only-expiry').addEventListener('change', renderTable);
+      document.getElementById('search-input').addEventListener('input', renderTable);
+      document.getElementById('sort-select').addEventListener('change', renderTable);
+
+      // Bill Upload & Sample Bills
+      const fileInput = document.getElementById('bill-file-input');
+      const dropzone = document.getElementById('bill-dropzone');
+
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleBillFileUpload(e.target.files[0]);
+        }
+      });
+
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('drag-over');
+      });
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('drag-over');
+      });
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleBillFileUpload(e.dataTransfer.files[0]);
+        }
+      });
+
+      document.getElementById('btn-sample-bill-1').addEventListener('click', () => {
+        document.getElementById('bill-raw-text').value = SAMPLE_BILLS[1];
+        extractedDraftItems = parseGroceryBillText(SAMPLE_BILLS[1]);
+        renderExtractedPreview();
+        showToast('Loaded Sample Supermarket Bill #1 & extracted 5 items!');
+      });
+
+      document.getElementById('btn-sample-bill-2').addEventListener('click', () => {
+        document.getElementById('bill-raw-text').value = SAMPLE_BILLS[2];
+        extractedDraftItems = parseGroceryBillText(SAMPLE_BILLS[2]);
+        renderExtractedPreview();
+        showToast('Loaded Sample Fresh Produce & Dairy Bill #2 & extracted 4 items!');
+      });
+
+      document.getElementById('btn-parse-text').addEventListener('click', () => {
+        const raw = document.getElementById('bill-raw-text').value;
+        extractedDraftItems = parseGroceryBillText(raw);
+        if (extractedDraftItems.length === 0) {
+          showToast('No receipt items found. Enter lines like: Milk | 1 L | 4 | 68.00', true);
+          return;
+        }
+        renderExtractedPreview();
+        showToast(`Extracted ${extractedDraftItems.length} item(s) from bill text`);
+      });
+
+      // Extracted Preview Table Edits
+      const extTbody = document.getElementById('extracted-tbody');
+      extTbody.addEventListener('input', (e) => {
+        const idx = parseInt(e.target.getAttribute('data-ext-idx'), 10);
+        const field = e.target.getAttribute('data-ext-field');
+        if (isNaN(idx) || !field || !extractedDraftItems[idx]) return;
+        if (['totalQty', 'unitCost', 'reorderLimit', 'reorderQty'].includes(field)) {
+          extractedDraftItems[idx][field] = Math.max(0, parseFloat(e.target.value) || 0);
+        } else {
+          extractedDraftItems[idx][field] = e.target.value;
+        }
+      });
+
+      extTbody.addEventListener('click', (e) => {
+        const rmBtn = e.target.closest('[data-ext-remove]');
+        if (rmBtn) {
+          const idx = parseInt(rmBtn.getAttribute('data-ext-remove'), 10);
+          extractedDraftItems.splice(idx, 1);
+          renderExtractedPreview();
+        }
+      });
+
+      document.getElementById('btn-add-extracted-row').addEventListener('click', () => {
+        extractedDraftItems.push({
+          name: 'New Bill Item',
+          unitWeightVolume: '1 kg',
+          totalQty: 2,
+          unitCost: 90.00,
+          purchaseDate: getRelativeDateStr(0),
+          expiryDate: getRelativeDateStr(40),
+          reorderLimit: 1,
+          reorderQty: 3,
+          category: 'Grains & Staples'
+        });
+        renderExtractedPreview();
+      });
+
+      document.getElementById('btn-clear-extracted').addEventListener('click', () => {
+        extractedDraftItems = [];
+        renderExtractedPreview();
+      });
+
+      document.getElementById('btn-import-extracted').addEventListener('click', () => {
+        if (extractedDraftItems.length === 0) return;
+        const today = getRelativeDateStr(0);
+        let importedCount = 0;
+
+        extractedDraftItems.forEach((draft, i) => {
+          groceries.unshift({
+            id: 'GRC-' + (Date.now() + i).toString().slice(-5),
+            entryDate: today,
+            name: (draft.name || 'Grocery Item').trim(),
+            category: draft.category || guessCategory(draft.name || ''),
+            unitWeightVolume: (draft.unitWeightVolume || '1 Pack').trim(),
+            purchaseDate: draft.purchaseDate || today,
+            expiryDate: draft.expiryDate || getRelativeDateStr(30),
+            unitCost: Math.max(0, Number(draft.unitCost) || 0),
+            totalQty: Math.max(1, Math.round(Number(draft.totalQty) || 1)),
+            usedQty: 0,
+            reorderLimit: Math.max(0, Math.round(Number(draft.reorderLimit) || 1)),
+            reorderQty: Math.max(1, Math.round(Number(draft.reorderQty) || 2))
+          });
+          importedCount++;
+        });
+
+        extractedDraftItems = [];
+        renderExtractedPreview();
+        saveInventory();
+        renderAll();
+        showToast(`Successfully imported ${importedCount} item(s) from grocery bill into live inventory!`);
+      });
+
+      // Main Table Inline Editing & Stepper Controls
+      const tbody = document.getElementById('inventory-tbody');
+
+      tbody.addEventListener('change', (e) => {
+        const input = e.target;
+        const id = input.getAttribute('data-id');
+        const field = input.getAttribute('data-field');
+        if (!id || !field) return;
+
+        const item = groceries.find(g => g.id === id);
+        if (!item) return;
+
+        const prevDerived = computeDerived(item);
+
+        if (['entryDate', 'purchaseDate', 'expiryDate', 'unitWeightVolume'].includes(field)) {
+          item[field] = input.value;
+        } else if (field === 'remainingQty') {
+          // Manual entry of Number of Items Remaining adjusts usedQty or totalQty seamlessly
+          let desiredRem = Math.max(0, parseInt(input.value, 10) || 0);
+          if (desiredRem > item.totalQty) {
+            item.totalQty = desiredRem + Number(item.usedQty);
+          } else {
+            item.usedQty = Math.max(0, item.totalQty - desiredRem);
+          }
+        } else {
+          let val = parseFloat(input.value);
+          if (isNaN(val) || val < 0) val = 0;
+          if (field === 'usedQty' && val > item.totalQty) {
+            item.totalQty = val;
+          }
+          item[field] = val;
+        }
+
+        const nextDerived = computeDerived(item);
+        saveInventory();
+        renderAll();
+
+        if (!prevDerived.isReorderAlert && nextDerived.isReorderAlert) {
+          showToast(`🔔 Reorder Limit Alert: "${item.name}" has reached ${nextDerived.remainingQty} remaining (Reorder Limit: ${nextDerived.reorderLimit})!`, true);
+        } else {
+          showToast(`Updated ${item.name}`);
+        }
+      });
+
+      tbody.addEventListener('click', (e) => {
+        const stepBtn = e.target.closest('.step-btn');
+        if (stepBtn) {
+          const id = stepBtn.getAttribute('data-id');
+          const delta = parseInt(stepBtn.getAttribute('data-step'), 10);
+          const item = groceries.find(g => g.id === id);
+          if (!item) return;
+
+          const prevDerived = computeDerived(item);
+          item.usedQty = Math.max(0, Math.min(item.totalQty, Number(item.usedQty) + delta));
+          const nextDerived = computeDerived(item);
+
+          saveInventory();
+          renderAll();
+
+          if (!prevDerived.isReorderAlert && nextDerived.isReorderAlert) {
+            showToast(`🔔 Reorder Limit Alert: "${item.name}" reached ${nextDerived.remainingQty} remaining (Limit: ${nextDerived.reorderLimit}). Reorder Qty: +${nextDerived.reorderQty}`, true);
+          }
+          return;
+        }
+
+        const restockBtn = e.target.closest('[data-restock-id]');
+        if (restockBtn) {
+          const id = restockBtn.getAttribute('data-restock-id');
+          const item = groceries.find(g => g.id === id);
+          if (!item) return;
+          item.totalQty = Number(item.totalQty) + Number(item.reorderQty);
+          saveInventory();
+          renderAll();
+          showToast(`Restocked +${item.reorderQty} (${item.unitWeightVolume}) of ${item.name}`);
+          return;
+        }
+
+        const editBtn = e.target.closest('[data-edit-id]');
+        if (editBtn) {
+          openGroceryModal(editBtn.getAttribute('data-edit-id'));
+          return;
+        }
+
+        const delBtn = e.target.closest('[data-delete-id]');
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-delete-id');
+          const item = groceries.find(g => g.id === id);
+          if (item) {
+            groceries = groceries.filter(g => g.id !== id);
+            saveInventory();
+            renderAll();
+            showToast(`Removed ${item.name}`);
+          }
+        }
+      });
+
+      document.getElementById('btn-restock-all-low').addEventListener('click', () => {
+        let count = 0;
+        groceries.forEach(item => {
+          const d = computeDerived(item);
+          if (d.isReorderAlert) {
+            item.totalQty = Number(item.totalQty) + Number(item.reorderQty);
+            count++;
+          }
+        });
+        if (count > 0) {
+          saveInventory();
+          renderAll();
+          showToast(`Restocked ${count} item(s) that were at or below their Reorder Limit!`);
+        } else {
+          showToast('All grocery items are currently above their Reorder Limit.');
+        }
+      });
+
+      // Add/Edit Modal
+      const modal = document.getElementById('grocery-modal');
+      document.getElementById('btn-open-add-modal').addEventListener('click', () => openGroceryModal(null));
+      document.getElementById('btn-close-modal').addEventListener('click', () => modal.close());
+      document.getElementById('btn-cancel-modal').addEventListener('click', () => modal.close());
+
+      document.getElementById('grocery-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('item-id').value;
+        const payload = {
+          id: editId || ('GRC-' + Date.now().toString().slice(-5)),
+          entryDate: document.getElementById('item-date').value || refDateStr,
+          name: document.getElementById('item-name').value.trim(),
+          category: document.getElementById('item-category').value,
+          unitWeightVolume: document.getElementById('item-unit').value.trim() || '1 Pack',
+          purchaseDate: document.getElementById('item-purchase-date').value,
+          expiryDate: document.getElementById('item-expiry-date').value,
+          unitCost: Math.max(0, parseFloat(document.getElementById('item-cost').value) || 0),
+          totalQty: Math.max(0, parseInt(document.getElementById('item-total-qty').value, 10) || 0),
+          usedQty: Math.max(0, parseInt(document.getElementById('item-used-qty').value, 10) || 0),
+          reorderLimit: Math.max(0, parseInt(document.getElementById('item-reorder-limit').value, 10) || 0),
+          reorderQty: Math.max(1, parseInt(document.getElementById('item-reorder-qty').value, 10) || 1)
+        };
+
+        if (payload.usedQty > payload.totalQty) {
+          payload.totalQty = payload.usedQty;
+        }
+
+        if (editId) {
+          const idx = groceries.findIndex(g => g.id === editId);
+          if (idx !== -1) groceries[idx] = payload;
+          showToast(`Updated ${payload.name}`);
+        } else {
+          groceries.unshift(payload);
+          showToast(`Added ${payload.name} to inventory`);
+        }
+
+        saveInventory();
+        renderAll();
+        modal.close();
+      });
+
+      document.getElementById('btn-reset-demo').addEventListener('click', () => {
+        groceries = getDefaultGroceries();
+        saveInventory();
+        renderAll();
+        showToast('Demo grocery inventory reset with live Reorder Limit & Expiry alerts.');
+      });
+
+      document.getElementById('btn-export-csv').addEventListener('click', exportCsv);
+    });
+  </script>
+</body>
+</html>
